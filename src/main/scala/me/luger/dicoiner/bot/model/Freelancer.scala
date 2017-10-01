@@ -12,25 +12,24 @@ import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonObjectId}
   * @version ${VERSION}
   */
 case class Bio (surname:Option[String], name:Option[String])
-case class TgInfo (tgNick:Option[String], tgId:Long)
+case class TgInfo (tgNick:Option[String] = None, tgId:Long)
 case class TechStack(techs:Seq[String])
 case class Freelancer(
-                      _id : BsonObjectId,
-                      bio:Bio,
-                      phoneNumber:Option[String],
-                      email:Option[String],
+                      _id : Option[BsonObjectId],
+                      bio:Bio = Bio(None, None),
+                      phoneNumber:Option[String] = None,
+                      email:Option[String] = None,
                       tgInfo: TgInfo,
-                      workingTechStack: TechStack,
-                      ownTechStack:TechStack,
-                      minRate:Option[Double],
-                      prefferedRate:Option[Double],
-                      timeZone: Option[TimeZone],
-                      hoursPerWeek: Option[HoursPerWeek])
+                      workingTechStack: TechStack = TechStack(Seq.empty),
+                      ownTechStack:TechStack = TechStack(Seq.empty),
+                      minRate:Option[Double] = None,
+                      prefferedRate:Option[Double] = None,
+                      timeZone: Option[TimeZone] = None,
+                      hoursPerWeek: Option[HoursPerWeek] = None)
 
 object FreelancerDocument {
   def apply(freelancer: Freelancer): BsonDocument = {
-    BsonDocument(
-      "_id" -> freelancer._id,
+    val doc = BsonDocument(
       "name" -> freelancer.bio.name.getOrElse(""),
       "surname" -> freelancer.bio.surname.getOrElse(""),
       "phoneNumber" -> freelancer.phoneNumber.getOrElse(""),
@@ -43,14 +42,18 @@ object FreelancerDocument {
       "timeZone" -> freelancer.timeZone.map(_.getDisplayName).getOrElse(""),
       "hoursPerWeek" -> freelancer.hoursPerWeek.map(_.name).getOrElse("")
     )
+    freelancer._id match {
+      case None => doc.append("_id", BsonObjectId())
+      case Some(id) => doc.append("_id", id)
+    }
   }
 
 }
 
 object FreelancerFromDoc{
-  def apply(tgId:Long, freelancer: Document): Freelancer = {
+  def apply(freelancer: Document): Freelancer = {
     Freelancer(
-      _id = freelancer.get("_id").map(_.asDocument()).head.asObjectId(),
+      _id = freelancer.get("_id").map(_.asObjectId()),
       bio = Bio(
         name = freelancer.get("name").map(x => x).bsonToString(),
         surname = freelancer.get("surname").bsonToString()
@@ -58,7 +61,7 @@ object FreelancerFromDoc{
       phoneNumber = freelancer.get("phoneNumber").bsonToString(),
       email = freelancer.get("email").bsonToString(),
       tgInfo = TgInfo(
-        tgId = tgId,
+        tgId = freelancer.get("tgId").bsonToLong().getOrElse(0),
         tgNick = freelancer.get("tgNick").bsonToString()
       ),
       workingTechStack = TechStack(
@@ -78,6 +81,8 @@ object FreelancerFromDoc{
   implicit class BsonToStringOps(b:Option[BsonValue]) {
     def bsonToString(): Option[String] = b.map(_.asString().getValue)
 
+    def bsonToLong(): Option[Long] = b.map(_.asInt64().getValue)
+
     def bsonToDouble(): Option[Double] = b.map(_.asDouble().getValue)
 
     def bsonToTimeZone(): Option[TimeZone] = {
@@ -90,7 +95,15 @@ object FreelancerFromDoc{
 
     def bsonArrayToSeq ():Seq[String] = {
       import scala.collection.JavaConverters._
-      b.map(_.asArray().getValues.asScala.map(_.asString().getValue).toSeq).getOrElse(Seq.empty)
+      b match {
+        case None => Seq.empty
+        case Some(x) =>
+          // TODO WTF
+          // println (s"res: ${x.asArray().getValues.asScala.headOption.map()}")
+          // result : res: Some(BsonArray{values=[BsonString{value='sdf'}, BsonString{value='sdf'}, BsonString{value='sdf'}]})
+          val t = x.asArray().getValues.asScala.map(_.asArray().getValues.asScala)
+          t.flatMap (x => x.map(_.asString().getValue))
+      }
     }
   }
 }

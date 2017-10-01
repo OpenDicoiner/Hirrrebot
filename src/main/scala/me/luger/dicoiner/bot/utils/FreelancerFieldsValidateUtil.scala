@@ -1,10 +1,12 @@
 package me.luger.dicoiner.bot.utils
 
+import org.slf4s.Logging
+
 /**
   * @author luger. Created on 28.09.17.
   * @version ${VERSION}
   */
-object FreelancerFieldsValidateUtil {
+object FreelancerFieldsValidateUtil extends Logging{
   private val emailPattern = "^[_A-Za-z0-9-]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9]+(\\.[A-Za-z0-9]+)*(\\.[A-Za-z]{2,})$".r
 
   /**
@@ -15,4 +17,23 @@ object FreelancerFieldsValidateUtil {
   def validateEmail (email:String) = emailPattern.findFirstIn(email).isDefined
 
   def validatePhoneNumber (phone:String) = phoneNumberPattern.findFirstIn(phone).isDefined
+
+  def validateTechStack (message:String) = message.split("[\\s\\.,;]+").nonEmpty
+
+  def validateDoubleRate (message:String) = try{
+    message.toDouble
+    true
+  }catch {
+    case ex:NumberFormatException =>
+      log.error("validating double rate was broken", ex)
+      false
+  }
+
+  def validateTimeZone (message: String ):Boolean = TimeZoneParsingUtil.parseTimeZone(message) match {
+    case Left (_) => false
+    case Right (_)=> true
+  }
+
+  def validateHoursOfWeek (message: String ):Boolean =
+    "\\d+-\\d+".r.findFirstIn(message).isDefined
 }

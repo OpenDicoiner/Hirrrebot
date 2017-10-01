@@ -33,6 +33,7 @@ abstract class UserRegStatus (override val name:String, override val message:Str
 object UserRegStatus extends CaseRegStatusEnum{
   type V = UserRegStatus
   case object notSaved extends UserRegStatus("not_saved", "", 0)
+  case object registered extends UserRegStatus("registered", "", 11)
   case object bio extends UserRegStatus("bio", "Для начала Ваши имя и фамилия", 1)
   case object phoneNumber extends UserRegStatus("phoneNumber", "Ваш номер телефона", 2)
   case object email extends UserRegStatus("email", "Вашу электронную почту", 3)
@@ -51,5 +52,5 @@ object UserRegStatus extends CaseRegStatusEnum{
   case object hoursPerWeek extends UserRegStatus("hoursPerWeek",
     "Количество свободных для работы часов на следующие две недели", 9)
   //case object tgNick extends UserRegStatus("", 10)
-  val values = List(bio, phoneNumber, email, workingStack, ownStack, minRate, prefferedRate, timeZone, hoursPerWeek)
+  val values = List(notSaved, registered, bio, phoneNumber, email, workingStack, ownStack, minRate, prefferedRate, timeZone, hoursPerWeek)
 }

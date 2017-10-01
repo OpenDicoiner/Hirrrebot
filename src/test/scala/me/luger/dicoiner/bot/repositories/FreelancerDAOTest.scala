@@ -12,7 +12,7 @@ import org.scalatest.{BeforeAndAfter, FunSuite}
 import org.slf4s.Logging
 
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, MINUTES}
 
 /**
   * @author luger. Created on 28.09.17.
@@ -25,8 +25,9 @@ class FreelancerDAOTest extends FunSuite with BeforeAndAfter with Logging {
   }
 
   test("testSave") {
-    val res: Completed = Await.result(freelancerDAO.save(Freelancer(
-      _id = BsonObjectId(),
+    val res = Await.result(freelancerDAO.save(
+      Freelancer(
+      _id = Option(BsonObjectId()),
       bio = Bio(name = Option ("Luger"), surname = Option ("Parabellum")),
       email = Option("ads@asd"),
       hoursPerWeek = Option(HoursPerWeek.h_5_10),
@@ -38,12 +39,13 @@ class FreelancerDAOTest extends FunSuite with BeforeAndAfter with Logging {
       tgInfo = TgInfo(tgId = 123L, tgNick = Option("ewrerwer")),
       timeZone = Option(TimeZone.getTimeZone(ZoneId.of("GMT+6")))
     )), Duration.Inf)
-      assert(res.toString() === "The operation completed successfully")
+      assert(res.isDefined)
+      assert(res.get._id.isDefined)
   }
 
-  test("test get by id"){
+  test("test get by telegram id"){
     val res: Option[Freelancer] = Await.result(freelancerDAO.getByTgId(123L), Duration.Inf)
-    log.info(s"$res")
+    log.info(s"res : $res")
     assert (res.isDefined)
     assert(res.get.tgInfo.tgNick.isDefined)
     assert(res.get.tgInfo.tgNick.get === "ewrerwer")

@@ -1,48 +1,146 @@
 package me.luger.dicoiner.bot.services
+import me.luger.dicoiner.bot.exceptions._
 import me.luger.dicoiner.bot.model._
-import me.luger.dicoiner.bot.repositories.FreelancerDAO
-import me.luger.dicoiner.bot.repositories.RegistrationDAO
-import org.bson.BsonObjectId
+import me.luger.dicoiner.bot.repositories.{RegStatus, RegistrationDAO}
+import me.luger.dicoiner.bot.utils.{FreelancerFieldsValidateUtil, TimeZoneParsingUtil}
+import org.slf4s.Logging
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author luger. Created on 28.09.17.
   * @version ${VERSION}
   */
-class RegisterUserStepByStepService {
-  private val freelancerDAO = new FreelancerDAO
+class RegisterUserStepByStepService extends SaveUserService with Logging{
   private val registrationDAO = new RegistrationDAO
 
-  def saveBio (tgId:Long, name:String, surname:String) = {
-    for {
-      freelancer <- freelancerDAO.getByTgId(tgId)
-      saved <- freelancer match {
-        case None => freelancerDAO.save(
-          Freelancer(
-            _id = BsonObjectId,
-            bio = Bio(
-              name = freelancer.get("name").map(x => x).bsonToString(),
-              surname = freelancer.get("surname").bsonToString()
-            ),
-            phoneNumber = freelancer.get("phoneNumber").bsonToString(),
-            email = freelancer.get("email").bsonToString(),
-            tgInfo = TgInfo(
-              tgId = tgId,
-              tgNick = freelancer.get("tgNick").bsonToString()
-            ),
-            workingTechStack = TechStack(
-              freelancer.get("workingTechStack").bsonArrayToSeq()
-            ),
-            ownTechStack = TechStack(
-              freelancer.get("ownTechStack").bsonArrayToSeq()
-            ),
-            minRate = freelancer.get("minRate").bsonToDouble(),
-            prefferedRate = freelancer.get("prefferedRate").bsonToDouble(),
-            timeZone = freelancer.get("timeZone").bsonToTimeZone(),
-            hoursPerWeek = freelancer.get("hoursPerWeek")
-              .map(x => HoursPerWeek(x.asString().getValue)).get
-          )
-        )
-      }
+  def getCurrent(tgId:Long): Future[Option[RegStatus]] =
+    registrationDAO.getCurrentRegOperation(tgId)
+
+  //TODO return function
+  def getNextStep(tgId:Long): Future[UserRegStatus] =
+    registrationDAO.getCurrentRegOperation(tgId).map {
+      regStatus =>
+        getNextStep(regStatus.getOrElse(RegStatus(registered = false, UserRegStatus.notSaved)))
+    }
+
+  private def getNextStep(currentState:RegStatus): UserRegStatus = currentState match {
+          case RegStatus(_, UserRegStatus.notSaved) => UserRegStatus.bio
+          case RegStatus(false, UserRegStatus.bio) => UserRegStatus.phoneNumber
+          case RegStatus(false, UserRegStatus.phoneNumber) => UserRegStatus.email
+          case RegStatus(false, UserRegStatus.email) => UserRegStatus.workingStack
+          case RegStatus(false, UserRegStatus.workingStack) => UserRegStatus.ownStack
+          case RegStatus(false, UserRegStatus.ownStack) => UserRegStatus.minRate
+          case RegStatus(false, UserRegStatus.minRate) => UserRegStatus.prefferedRate
+          case RegStatus(false, UserRegStatus.prefferedRate) => UserRegStatus.timeZone
+          case RegStatus(false, UserRegStatus.timeZone) => UserRegStatus.hoursPerWeek
+          case _ => UserRegStatus.bio
+        }
+
+  import FreelancerFieldsValidateUtil._
+
+  def validateAndSaveBioReg (tgId: Long, currentStatus:RegStatus, message:String): Future[Try[Option[Freelancer]]] = {
+    val bio = message.split(" ").toList
+    val name = bio.headOption.getOrElse("")
+    val surname = if (bio.isEmpty) "" else bio.tail.headOption.getOrElse("")
+    if (name.isEmpty || surname.isEmpty) Failure(new EmptyBioException("name or surname is empty"))
+    (for {
+      bio <- saveBio(tgId, name, surname)
+      _ <- registrationDAO.saveRegOperation(tgId, RegStatus (false, getNextStep(currentStatus)))
+    } yield bio).map(x => Success (x))
+
+  }
+
+  def validateAndSavePhoneReg (tgId: Long, currentStatus:RegStatus, message:String): Future[Try[Option[Freelancer]]] ={
+    if (!FreelancerFieldsValidateUtil.validatePhoneNumber(message))
+      Failure(new InvalidPhoneNumberException("номер телефона не корректен"))
+    (for {
+      bio <- savePhone(tgId, message)
+      _ <- registrationDAO.saveRegOperation(tgId, RegStatus (false, getNextStep(currentStatus)))
+    } yield bio).map(x => Success (x))
+  }
+
+  def validateAndSaveEmailReg (tgId: Long, currentStatus:RegStatus, message:String): Future[Try[Option[Freelancer]]] ={
+    if (!FreelancerFieldsValidateUtil.validateEmail(message))
+      Failure(new InvalidEmailException("email некорректен"))
+    (for {
+      bio <- saveEmail(tgId, message)
+      _ <- registrationDAO.saveRegOperation(tgId, RegStatus (false, getNextStep(currentStatus)))
+    } yield bio).map(x => Success (x))
+  }
+
+  def validateAndSaveWorkTechsReg (tgId: Long, currentStatus:RegStatus, message:String): Future[Try[Option[Freelancer]]] ={
+    validateAndSave(tgId, currentStatus, message)(saveWorkTechs, validateTechStack,
+      _.split("[\\s\\.,;]+").toSeq,
+      new InvalidWorkingTechStackException("строка с технологиями некорректна "))
+  }
+
+  def validateAndSaveOwnTechsReg (tgId: Long, currentStatus:RegStatus, message:String): Future[Try[Option[Freelancer]]] ={
+    validateAndSave(tgId, currentStatus, message)(saveOwnTechs, validateTechStack,
+      _.split("[\\s\\.,;]+").toSeq,
+      new InvalidWorkingTechStackException("строка с технологиями некорректна "))
+  }
+
+  def validateAndSaveMinRateReg (tgId: Long, currentStatus:RegStatus, message:String): Future[Try[Option[Freelancer]]] ={
+    validateAndSave(tgId, currentStatus, message)(saveMinRate, validateDoubleRate, _.toDouble,
+      new InvalidRateException("значение минимальной ставки не корректно"))
+  }
+
+  def validateAndSavePreferredRateReg (tgId: Long, currentStatus:RegStatus, message:String): Future[Try[Option[Freelancer]]] ={
+    validateAndSave(tgId, currentStatus, message)(savePreferredRate, validateDoubleRate, _.toDouble,
+      new InvalidRateException("значение предпочитаемой ставки не корректно"))
+  }
+
+  def validateAndSave[T] (tgId: Long, currentStatus:RegStatus, message:String)(save:(Long, T)=>Future[Option[Freelancer]], validate:String => Boolean, mapTo:(String) => T, failureException:Exception) : Future[Try[Option[Freelancer]]]={
+    if (!validate(message)) Future{Failure(failureException)}
+    else
+      (for {
+        data <- save(tgId, mapTo(message))
+        _ <- registrationDAO.saveRegOperation(tgId, RegStatus (false, getNextStep(currentStatus)))
+      } yield data).map(x => Success (x))
+  }
+
+  def processMessage (tgId: Long, message:String):Future[Try[Option[Freelancer]]] = {
+    getCurrent(tgId).flatMap{status =>
+      processMessage(tgId,
+        status.getOrElse(RegStatus(registered = false, UserRegStatus.notSaved)), message)
     }
   }
+
+  def processMessage (tgId: Long, currentStatus:RegStatus, message:String):Future[Try[Option[Freelancer]]] = {
+    currentStatus match {
+      case RegStatus(false, UserRegStatus.bio) => validateAndSaveBioReg(tgId, currentStatus, message)
+      case RegStatus(false, UserRegStatus.phoneNumber) =>
+        validateAndSaveBioReg(tgId, currentStatus, message)
+      case RegStatus(false, UserRegStatus.email) =>
+        validateAndSaveEmailReg(tgId, currentStatus, message)
+      case RegStatus(false, UserRegStatus.workingStack) =>
+        validateAndSaveWorkTechsReg(tgId, currentStatus, message)
+      case RegStatus(false, UserRegStatus.ownStack) =>
+        validateAndSaveOwnTechsReg(tgId, currentStatus, message)
+      case RegStatus(false, UserRegStatus.minRate) =>
+        validateAndSaveMinRateReg(tgId, currentStatus, message)
+      case RegStatus(false, UserRegStatus.prefferedRate) =>
+        validateAndSavePreferredRateReg(tgId, currentStatus, message)
+      case RegStatus(false, UserRegStatus.timeZone) =>
+        validateAndSave(tgId, currentStatus, message)(
+          saveTimeZone, validateTimeZone,
+          {x =>  TimeZoneParsingUtil.parseTimeZone(x).right.get},
+          new InvalidTimeZoneException("значение часового пояса не корректно"))
+      case RegStatus(false, UserRegStatus.hoursPerWeek) =>
+        validateAndSave(tgId, currentStatus, message)(saveHours, FreelancerFieldsValidateUtil.validateHoursOfWeek, {x => HoursPerWeek(x).getOrElse(HoursPerWeek.h_5_10)}, new InvalidTimeZoneException("значение количества часов в неделю не корректно"))
+      //case RegStatus(true, _) =>
+    }
+  }
+  //TODO rewrite ^ with type classes
+
+  /*trait ValidateAndSave[Status<:UserRegStatus] {
+    def validateAndSave (tgId: Long, message:String, status: Status)
+  }
+
+  implicit object ValidateAndSaveBio extends ValidateAndSave[UserRegStatus]{
+
+  }*/
 }
