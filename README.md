@@ -25,7 +25,7 @@
 ```
 
 2) не считая этих настроек запуск может быть в двух вариантах:
-- sbt sbt dockerComposeUp
+- sbt dockerComposeUp
 запустит экземпляр бота и mongo
 
 - TELEGRAM_KEY=<ключ от бота> sbt run

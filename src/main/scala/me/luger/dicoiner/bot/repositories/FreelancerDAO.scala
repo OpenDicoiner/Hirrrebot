@@ -16,8 +16,8 @@ import scala.concurrent.Future
   * @version ${VERSION}
   */
 // TODO rewrite with traits and DI
-class FreelancerDAO extends Logging{
-  private val freelancerCollection = MongoFactory.database.getCollection("freelancers")
+class FreelancerDAO(port:Option[Int] = None) extends Logging{
+  private val freelancerCollection = MongoFactory(port).database.getCollection("freelancers")
 
   def save (freelancer: Freelancer ): Future[Option[Freelancer]] ={
     val a = FreelancerDocument(freelancer)

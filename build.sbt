@@ -15,8 +15,7 @@ resolvers += Resolver.sonatypeRepo("snapshots")
 val testDependencies = Seq(
     "org.scalactic" %% "scalactic" % "3.0.1",
     "org.scalatest" %% "scalatest" % "3.0.1" % "test",
-    "com.dimafeng" %% "testcontainers-scala" % "0.7.0" % "test",
-    "com.github.simplyscala" %% "scalatest-embedmongo" % "0.2.4" % "test"
+    "com.dimafeng" %% "testcontainers-scala" % "0.7.0" % "test"
 )
 
 val loggingDependencies = Seq(

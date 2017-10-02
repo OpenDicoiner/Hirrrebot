@@ -18,8 +18,8 @@ import scala.concurrent.Future
   */
 case class RegStatus(registered:Boolean, status:UserRegStatus)
 
-class RegistrationDAO extends Logging{
-  private val regStatusCollection = MongoFactory.database.getCollection("regStatus")
+class RegistrationDAO(port:Option[Int] = None) extends Logging{
+  private val regStatusCollection = MongoFactory(port).database.getCollection("regStatus")
 
   def getCurrentRegOperation (tgUserId:Long): Future[Option[RegStatus]] =
     regStatusCollection
