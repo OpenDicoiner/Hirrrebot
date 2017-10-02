@@ -29,7 +29,6 @@ class BotServise(val token:String)
 
   override val broker: Option[ActorRef] = Some(system.actorOf(Props(new TwoWeeksSchedulerActor), "Actor"))
   implicit private val ec: ExecutionContextExecutor = system.dispatcher
-  implicit val rmaterializer = materializer
   private val twoWeeksSeconds = 1//2 * 7 * 24 * 60
   system.scheduler.schedule(1000.milliseconds, twoWeeksSeconds.minutes)(broker.get!TwoWeeksSchedulerActor.NotifyUsers)
 
@@ -174,7 +173,7 @@ class BotServise(val token:String)
           case x@UserRegStatus.registered =>
             log.info("check registered moment")
             googleFormSendService.sendForm(u).map(x => {
-              log.debug(s"form response : $x")
+              log.debug(s"form response : ${x}")
               x
             })
             reply(x.message)
