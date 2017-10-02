@@ -3,6 +3,7 @@ import me.luger.dicoiner.bot.exceptions._
 import me.luger.dicoiner.bot.model._
 import me.luger.dicoiner.bot.repositories.{FreelancerDAO, RegStatus, RegistrationDAO}
 import me.luger.dicoiner.bot.utils.{FreelancerFieldsValidateUtil, TimeZoneParsingUtil}
+import org.bson.BsonValue
 import org.slf4s.Logging
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -44,7 +45,7 @@ class RegisterUserStepByStepService extends SaveUserService with Logging{
 
   import FreelancerFieldsValidateUtil._
 
-  def saveFirst (tgId:Long, chatId:Long, tgNick:Option[String]): Future[Long] ={
+  def saveFirst (tgId:Long, chatId:Long, tgNick:Option[String]): Future[BsonValue] ={
     for {
       _          <- saveTgInfo(tgId, chatId, tgNick)
       regInfo    <- registrationDAO

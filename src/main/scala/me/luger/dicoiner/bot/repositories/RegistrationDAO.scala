@@ -3,6 +3,7 @@ package me.luger.dicoiner.bot.repositories
 import com.mongodb.client.model.{Filters, UpdateOptions}
 import me.luger.dicoiner.bot.model.UserRegStatus
 import me.luger.dicoiner.bot.utils.MongoFactory
+import org.bson.BsonValue
 import org.mongodb.scala.Document
 import org.mongodb.scala.bson.{BsonBoolean, BsonDocument, BsonInt32, BsonInt64, BsonObjectId}
 import org.mongodb.scala.result.UpdateResult
@@ -34,7 +35,7 @@ class RegistrationDAO extends Logging{
         }
       .toFuture.map(_.headOption)
 
-  def saveRegOperation(tgUserId:Long, regStatus: RegStatus): Future[Long] = {
+  def saveRegOperation(tgUserId:Long, regStatus: RegStatus): Future[BsonValue] = {
     for {
       regStatusDoc: Seq[Document] <- regStatusCollection
         .find(Filters.eq("tgId", tgUserId)).toFuture()
@@ -54,7 +55,7 @@ class RegistrationDAO extends Logging{
           regStatusCollection.replaceOne(
             Filters.eq("_id", _id), doc, new UpdateOptions().upsert(true)).toFuture
       }
-    }yield updatedDoc.getModifiedCount+updatedDoc.getMatchedCount
+    }yield updatedDoc.getUpsertedId
   }
 
   def getAll: Future[Seq[Document]] = regStatusCollection.find().toFuture()

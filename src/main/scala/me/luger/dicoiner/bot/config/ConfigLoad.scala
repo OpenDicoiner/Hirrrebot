@@ -12,7 +12,8 @@ object ConfigLoad {
   def apply(): BotConfig = botConfig
 
   def applyConfig ():BotConfig = {
-    BotConfig(config.getString("bot-token"))
+    val token = if (config.getString("bot-token").isEmpty)System.getenv("TELEGRAM_KEY") else config.getString("bot-token")
+    BotConfig(token)
   }
 
   private[this] lazy val config:Config = ConfigFactory.load()

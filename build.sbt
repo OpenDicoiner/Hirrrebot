@@ -1,6 +1,8 @@
+import scala.io.Source
+
 name := "dicoinerBot"
 
-organization := "me.luger"
+organization := "luger"
 
 version := "0.1.0"
 
@@ -12,7 +14,9 @@ resolvers += Resolver.sonatypeRepo("snapshots")
 
 val testDependencies = Seq(
     "org.scalactic" %% "scalactic" % "3.0.1",
-    "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+    "org.scalatest" %% "scalatest" % "3.0.1" % "test",
+    "com.dimafeng" %% "testcontainers-scala" % "0.7.0" % "test",
+    "com.github.simplyscala" %% "scalatest-embedmongo" % "0.2.4" % "test"
 )
 
 val loggingDependencies = Seq(
@@ -30,3 +34,21 @@ val botDependencies = Seq (
 
 libraryDependencies ++= botDependencies ++ loggingDependencies ++ testDependencies
 
+enablePlugins(DockerPlugin, DockerComposePlugin)
+
+dockerfile in docker := {
+  val artifact: File = assembly.value
+  val artifactTargetPath = s"/app/${artifact.name}"
+
+  new Dockerfile {
+    from("java")
+    add(artifact, artifactTargetPath)
+    entryPoint("java", "-jar", artifactTargetPath)
+  }
+}
+
+variablesForSubstitution := Map("TELEGRAM_KEY" -> Source.fromFile("telegram.key").getLines().next)
+
+dockerImageCreationTask := docker.value
+
+test in docker := {}

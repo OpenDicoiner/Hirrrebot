@@ -1,9 +1,3 @@
 {
-  "serverConfig":{
-    "port": 8080,
-    "ssl":{
-      "use" : false
 
-    }
-  }
 }

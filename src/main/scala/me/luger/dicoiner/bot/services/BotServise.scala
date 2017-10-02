@@ -1,7 +1,6 @@
 package me.luger.dicoiner.bot.services
 
 import akka.actor.{Actor, ActorRef, Props}
-import akka.stream.ActorMaterializer
 import info.mukel.telegrambot4s.actors.ActorBroker
 import info.mukel.telegrambot4s.api.declarative.{Callbacks, Commands}
 import info.mukel.telegrambot4s.api.{Polling, TelegramBot}
@@ -29,7 +28,7 @@ class BotServise(val token:String)
 
   override val broker: Option[ActorRef] = Some(system.actorOf(Props(new TwoWeeksSchedulerActor), "Actor"))
   implicit private val ec: ExecutionContextExecutor = system.dispatcher
-  private val twoWeeksSeconds = 1//2 * 7 * 24 * 60
+  private val twoWeeksSeconds = 2 * 7 * 24 * 60
   system.scheduler.schedule(1000.milliseconds, twoWeeksSeconds.minutes)(broker.get!TwoWeeksSchedulerActor.NotifyUsers)
 
   val registerUserStepByStepService = new RegisterUserStepByStepService

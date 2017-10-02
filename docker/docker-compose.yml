@@ -1,0 +1,11 @@
+db:
+  image: mongo:3.4.9
+  command: --smallfiles
+dicoinerBot:
+  image: luger/dicoinerBot:latest
+  environment:
+      DB_URL: db
+      DB_PORT: 27017
+      TELEGRAM_KEY: "${TELEGRAM_KEY}"
+  links:
+   - db
