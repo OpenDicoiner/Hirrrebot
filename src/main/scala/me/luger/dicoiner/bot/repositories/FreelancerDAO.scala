@@ -55,7 +55,10 @@ class FreelancerDAO extends Logging{
     //.first().map(x => FreelancerFromDoc(x)).toFuture.map(x => x.headOption)
   }
 
-  def findAll: Future[Seq[Document]] = {
+  def findAll: Future[Seq[Freelancer]] = {
     freelancerCollection.find.collect().toFuture
+      .recoverWith { case e: Throwable => log.error("find by ID", e); Future.failed(e) }
+      .map(_.map(x => FreelancerFromDoc(x)))
   }
+
 }

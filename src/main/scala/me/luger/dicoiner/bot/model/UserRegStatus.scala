@@ -34,7 +34,7 @@ abstract class UserRegStatus (override val name:String, override val message:Str
 object UserRegStatus extends CaseRegStatusEnum{
   type V = UserRegStatus
   case object notSaved    extends UserRegStatus("not_saved", "", "", 0)
-  case object registered  extends UserRegStatus("registered", "Спасибо, Вы зарегестрированы!", "", 11)
+  case object registered  extends UserRegStatus("registered", "Спасибо, Вы зарегистрированы!", "", 11)
   case object bio         extends UserRegStatus("bio", "Для начала Ваши имя и фамилия", "ФИО", 1)
   case object phoneNumber extends UserRegStatus("phoneNumber", "Ваш номер телефона", "Номер телефона", 2)
   case object email       extends UserRegStatus("email", "Вашу электронную почту", "Email", 3)

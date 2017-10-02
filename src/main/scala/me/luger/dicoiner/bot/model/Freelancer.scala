@@ -12,7 +12,7 @@ import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonObjectId}
   * @version ${VERSION}
   */
 case class Bio (surname:Option[String], name:Option[String])
-case class TgInfo (tgNick:Option[String] = None, tgId:Long)
+case class TgInfo (tgNick:Option[String] = None, tgId:Long, chatId: Long)
 case class TechStack(techs:Seq[String])
 case class Freelancer(
                       _id : Option[BsonObjectId],
@@ -35,6 +35,7 @@ object FreelancerDocument {
       "email" -> freelancer.email.getOrElse(""),
       "phoneNumber" -> freelancer.phoneNumber.getOrElse(""),
       "tgId" -> freelancer.tgInfo.tgId,
+      "chatId" -> freelancer.tgInfo.chatId,
       "tgNick" -> freelancer.tgInfo.tgNick.getOrElse(""),
       "workingTechStack" -> BsonArray(freelancer.workingTechStack.techs),
       "ownTechStack" -> BsonArray(freelancer.ownTechStack.techs),
@@ -63,7 +64,8 @@ object FreelancerFromDoc{
       email = freelancer.get("email").bsonToString(),
       tgInfo = TgInfo(
         tgId = freelancer.get("tgId").bsonToLong().getOrElse(0),
-        tgNick = freelancer.get("tgNick").bsonToString()
+        tgNick = freelancer.get("tgNick").bsonToString(),
+        chatId = freelancer.get("chatId").bsonToLong().getOrElse(0)
       ),
       workingTechStack = TechStack(
         freelancer.get("workingTechStack").bsonArrayToSeq()

@@ -25,13 +25,13 @@ trait SaveUserService {
     }
   }yield saved
 
-  def saveTgInfo (tgId:Long, tgName:Option[String]): Future[Option[Freelancer]] = for {
+  def saveTgInfo (tgId:Long, chatId:Long, tgName:Option[String]): Future[Option[Freelancer]] = for {
     freelancer <- freelancerDAO.getByTgId(tgId)
     saved <- freelancer match {
       case None =>
-        freelancerDAO.save(Freelancer(None,tgInfo = TgInfo(tgId = tgId, tgNick = tgName)))
+        freelancerDAO.save(Freelancer(None,tgInfo = TgInfo(tgId = tgId, chatId = chatId, tgNick = tgName)))
       case Some(x) =>
-        freelancerDAO.updateByTgId(x.copy( tgInfo = TgInfo (tgName, tgId) ))
+        freelancerDAO.updateByTgId(x.copy( tgInfo = TgInfo (tgName, tgId, chatId) ))
 
     }
   }yield saved

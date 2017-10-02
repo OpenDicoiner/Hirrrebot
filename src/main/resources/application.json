@@ -1,3 +1,16 @@
 {
-  "bot-token": "478141275:AAFq1n2J5oYmh0Ra6I6HJZQD5xy5zgghwao"
+  "bot-token": "478141275:AAFq1n2J5oYmh0Ra6I6HJZQD5xy5zgghwao",
+  "googleForm":{
+    "formUri":"https://docs.google.com/forms/d/e/1FAIpQLSfpWAWsNEZ4G0pbtF-XNE3arwNlYn-e5Th5BTnp0L2PD6OslQ/formResponse",
+    "bio": "entry.695648163",
+    "phoneNumber": "entry.789588282",
+    "email" : "entry.1187330536",
+    "workStack" : "entry.1757632305",
+    "ownStack" : "entry.1885265433",
+    "minRate" : "entry.1004429887",
+    "prefferedRate" : "entry.202934781",
+    "timeZone" : "entry.960613366",
+    "freeHours" : "entry.1212794204",
+    "tgLink" : "entry.270212300"
+  }
 }

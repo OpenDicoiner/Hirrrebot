@@ -24,7 +24,9 @@ val loggingDependencies = Seq(
 val botDependencies = Seq (
   "com.typesafe" % "config" % "1.3.1",
   "info.mukel" %% "telegrambot4s" % "3.0.9",
-  "org.mongodb.scala" %% "mongo-scala-driver" % "2.1.0"
+  "org.mongodb.scala" %% "mongo-scala-driver" % "2.1.0",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.1",
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.9.1"
 )
 
 libraryDependencies ++= botDependencies ++ loggingDependencies ++ testDependencies

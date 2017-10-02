@@ -8,7 +8,7 @@ import org.slf4s.Logging
   */
 object Main extends Logging{
   def main (args: Array[String]):Unit = {
-    val token:String = ConfigLoad().botToken
+    val token: String = ConfigLoad().botToken
     val botService = new BotServise(token)
     botService.run
   }

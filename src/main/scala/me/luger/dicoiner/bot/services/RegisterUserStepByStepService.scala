@@ -44,9 +44,9 @@ class RegisterUserStepByStepService extends SaveUserService with Logging{
 
   import FreelancerFieldsValidateUtil._
 
-  def saveFirst (tgId:Long, tgNick:Option[String]): Future[Long] ={
+  def saveFirst (tgId:Long, chatId:Long, tgNick:Option[String]): Future[Long] ={
     for {
-      _          <- saveTgInfo(tgId, tgNick)
+      _          <- saveTgInfo(tgId, chatId, tgNick)
       regInfo    <- registrationDAO
         .saveRegOperation( tgId, RegStatus(registered = false, UserRegStatus.bio) )
     }yield regInfo
@@ -122,7 +122,7 @@ class RegisterUserStepByStepService extends SaveUserService with Logging{
 
   def finishRegistration(tgId: Long): Future[Try[Option[Freelancer]]] = {
     (for {
-      _    <- registrationDAO.saveRegOperation(tgId, RegStatus (true, UserRegStatus.registered))
+      _    <- registrationDAO.saveRegOperation(tgId, RegStatus (registered = true, UserRegStatus.registered))
       user <- freelancerDao.getByTgId(tgId)
     } yield user).map(x => Success (x))
   }
