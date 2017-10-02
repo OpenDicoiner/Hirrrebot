@@ -4,10 +4,9 @@ import java.util.TimeZone
 
 import me.luger.dicoiner.bot.model._
 import me.luger.dicoiner.bot.repositories.FreelancerDAO
-import org.mongodb.scala.bson.BsonObjectId
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /**
   * @author luger. Created on 30.09.17.
@@ -16,52 +15,42 @@ import scala.concurrent.ExecutionContext.Implicits.global
 trait SaveUserService {
   private val freelancerDAO = new FreelancerDAO
 
-  def saveBio (tgId:Long, name:String, surname:String): Future[Option[Freelancer]] = {
-    for {
-      freelancer <- freelancerDAO.getByTgId(tgId)
-      saved <- freelancer match {
-        case None => None
-        case Some(x) =>
-          freelancerDAO.updateByTgId(x.copy(bio = Bio( name = Option(name), surname = Option(surname) )))
+  def saveBio (tgId:Long, name:String, surname:String): Future[Option[Freelancer]] = for {
+    freelancer <- freelancerDAO.getByTgId(tgId)
+    saved <- freelancer match {
+      case None => Future {None}
+      case Some(x) =>
+        freelancerDAO.updateByTgId(x.copy(bio = Bio( name = Option(name), surname = Option(surname) )))
 
-      }
-    }yield saved
-  }
+    }
+  }yield saved
 
-  def saveTgInfo (tgId:Long, tgName:Option[String]): Future[Option[Freelancer]] = {
-    for {
-      freelancer <- freelancerDAO.getByTgId(tgId)
-      saved <- freelancer match {
-        case None => None
-        case Some(x) =>
-          freelancerDAO.updateByTgId(x.copy( tgInfo = TgInfo (tgName, tgId) ))
+  def saveTgInfo (tgId:Long, tgName:Option[String]): Future[Option[Freelancer]] = for {
+    freelancer <- freelancerDAO.getByTgId(tgId)
+    saved <- freelancer match {
+      case None =>
+        freelancerDAO.save(Freelancer(None,tgInfo = TgInfo(tgId = tgId, tgNick = tgName)))
+      case Some(x) =>
+        freelancerDAO.updateByTgId(x.copy( tgInfo = TgInfo (tgName, tgId) ))
 
-      }
-    }yield saved
-  }
+    }
+  }yield saved
 
-  def savePhone (tgId:Long, phoneNumber : String ): Future[Option[Freelancer]] = {
-    for {
-      freelancer <- freelancerDAO.getByTgId(tgId)
-      saved <- freelancer match {
-        case None => None
-        case Some(x) =>
-          freelancerDAO.updateByTgId(x.copy( phoneNumber = Option(phoneNumber) ))
+  def savePhone (tgId:Long, phoneNumber : String ): Future[Option[Freelancer]] = for {
+    freelancer <- freelancerDAO.getByTgId(tgId)
+    saved <- freelancer match {
+      case None => Future {None}
+      case Some(x) =>
+        freelancerDAO.updateByTgId(x.copy( phoneNumber = Option(phoneNumber) ))
 
-      }
-    }yield saved
-  }
+    }
+  }yield saved
 
   def saveEmail (tgId:Long, email : String ): Future[Option[Freelancer]] =
     for {
       freelancer <- freelancerDAO.getByTgId(tgId)
       saved <- freelancer match {
-        case None => freelancerDAO.save(
-          Freelancer(
-            _id = None,
-            email = Option(email),
-            tgInfo = TgInfo(tgId = tgId )
-          ))
+        case None => Future {None}
         case Some(x) =>
           freelancerDAO.updateByTgId(x.copy( email = Option(email) ))
       }
@@ -71,12 +60,7 @@ trait SaveUserService {
     for {
       freelancer <- freelancerDAO.getByTgId(tgId)
       saved <- freelancer match {
-        case None => freelancerDAO.save(
-          Freelancer(
-            _id = None,
-            workingTechStack = TechStack( workingTechs ),
-            tgInfo = TgInfo(tgId = tgId )
-          ))
+        case None => Future {None}
         case Some(x) =>
           freelancerDAO.updateByTgId(x.copy( workingTechStack = TechStack( workingTechs ) ))
       }
@@ -86,12 +70,7 @@ trait SaveUserService {
     for {
       freelancer <- freelancerDAO.getByTgId(tgId)
       saved <- freelancer match {
-        case None => freelancerDAO.save(
-          Freelancer(
-            _id = None,
-            ownTechStack = TechStack( ownTechs ),
-            tgInfo = TgInfo(tgId = tgId )
-          ))
+        case None => Future {None}
         case Some(x) =>
           freelancerDAO.updateByTgId(x.copy( ownTechStack = TechStack( ownTechs ) ))
       }
@@ -101,12 +80,7 @@ trait SaveUserService {
     for {
       freelancer <- freelancerDAO.getByTgId(tgId)
       saved <- freelancer match {
-        case None => freelancerDAO.save(
-          Freelancer(
-            _id = None,
-            minRate = Option(minRate),
-            tgInfo = TgInfo(tgId = tgId)
-          ))
+        case None => Future {None}
         case Some(x) =>
           freelancerDAO.updateByTgId(x.copy( minRate = Option(minRate) ))
       }
@@ -116,12 +90,7 @@ trait SaveUserService {
     for {
       freelancer <- freelancerDAO.getByTgId(tgId)
       saved <- freelancer match {
-        case None => freelancerDAO.save(
-          Freelancer(
-            _id = None,
-            prefferedRate = Option(prefferedRate),
-            tgInfo = TgInfo(tgId = tgId)
-          ))
+        case None => Future {None}
         case Some(x) =>
           freelancerDAO.updateByTgId(x.copy( prefferedRate = Option(prefferedRate) ))
       }
@@ -131,12 +100,7 @@ trait SaveUserService {
     for {
       freelancer <- freelancerDAO.getByTgId(tgId)
       saved <- freelancer match {
-        case None => freelancerDAO.save(
-          Freelancer(
-            _id = None,
-            timeZone = Option(timeZone),
-            tgInfo = TgInfo(tgId = tgId )
-          ))
+        case None => Future {None}
         case Some(x) =>
           freelancerDAO.updateByTgId(x.copy( timeZone = Option(timeZone) ))
       }
@@ -146,12 +110,7 @@ trait SaveUserService {
     for {
       freelancer <- freelancerDAO.getByTgId(tgId)
       saved <- freelancer match {
-        case None => freelancerDAO.save(
-          Freelancer(
-            _id = None,
-            hoursPerWeek = Option(hoursPerWeek),
-            tgInfo = TgInfo(tgId = tgId )
-          ))
+        case None => Future {None}
         case Some(x) =>
           freelancerDAO.updateByTgId(x.copy( hoursPerWeek = Option(hoursPerWeek) ))
       }

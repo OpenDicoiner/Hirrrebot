@@ -23,13 +23,15 @@ class RegistrationDAO extends Logging{
   def getCurrentRegOperation (tgUserId:Long): Future[Option[RegStatus]] =
     regStatusCollection
       .find(Filters.eq("tgId", tgUserId))
-        .map(x => RegStatus(
-          x.get("registered").exists(_.asBoolean().getValue),
-          {
-            val a: Int = x.get("status").map(_.asInt32().getValue).getOrElse(0)
-            UserRegStatus(a).getOrElse(UserRegStatus.notSaved)
-          }
-        ))
+        .map{x =>
+          log.debug(s"current is $x, ${UserRegStatus(x.get("status").map(_.asInt32().getValue).getOrElse(0))}")
+          RegStatus(
+            x.get("registered").exists(_.asBoolean().getValue),
+            {
+              val a: Int = x.get("status").map(_.asInt32().getValue).getOrElse(0)
+              UserRegStatus(a).getOrElse(UserRegStatus.notSaved)
+            })
+        }
       .toFuture.map(_.headOption)
 
   def saveRegOperation(tgUserId:Long, regStatus: RegStatus): Future[Long] = {
@@ -55,5 +57,5 @@ class RegistrationDAO extends Logging{
     }yield updatedDoc.getModifiedCount+updatedDoc.getMatchedCount
   }
 
-  def getAll = regStatusCollection.find().toFuture()
+  def getAll: Future[Seq[Document]] = regStatusCollection.find().toFuture()
 }

@@ -32,6 +32,7 @@ object FreelancerDocument {
     val doc = BsonDocument(
       "name" -> freelancer.bio.name.getOrElse(""),
       "surname" -> freelancer.bio.surname.getOrElse(""),
+      "email" -> freelancer.email.getOrElse(""),
       "phoneNumber" -> freelancer.phoneNumber.getOrElse(""),
       "tgId" -> freelancer.tgInfo.tgId,
       "tgNick" -> freelancer.tgInfo.tgNick.getOrElse(""),

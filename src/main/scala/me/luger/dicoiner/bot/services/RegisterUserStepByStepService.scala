@@ -1,7 +1,7 @@
 package me.luger.dicoiner.bot.services
 import me.luger.dicoiner.bot.exceptions._
 import me.luger.dicoiner.bot.model._
-import me.luger.dicoiner.bot.repositories.{RegStatus, RegistrationDAO}
+import me.luger.dicoiner.bot.repositories.{FreelancerDAO, RegStatus, RegistrationDAO}
 import me.luger.dicoiner.bot.utils.{FreelancerFieldsValidateUtil, TimeZoneParsingUtil}
 import org.slf4s.Logging
 
@@ -15,6 +15,7 @@ import scala.util.{Failure, Success, Try}
   */
 class RegisterUserStepByStepService extends SaveUserService with Logging{
   private val registrationDAO = new RegistrationDAO
+  private val freelancerDao = new FreelancerDAO
 
   def getCurrent(tgId:Long): Future[Option[RegStatus]] =
     registrationDAO.getCurrentRegOperation(tgId)
@@ -26,7 +27,7 @@ class RegisterUserStepByStepService extends SaveUserService with Logging{
         getNextStep(regStatus.getOrElse(RegStatus(registered = false, UserRegStatus.notSaved)))
     }
 
-  private def getNextStep(currentState:RegStatus): UserRegStatus = currentState match {
+  def getNextStep(currentState:RegStatus): UserRegStatus = currentState match {
           case RegStatus(_, UserRegStatus.notSaved) => UserRegStatus.bio
           case RegStatus(false, UserRegStatus.bio) => UserRegStatus.phoneNumber
           case RegStatus(false, UserRegStatus.phoneNumber) => UserRegStatus.email
@@ -36,19 +37,29 @@ class RegisterUserStepByStepService extends SaveUserService with Logging{
           case RegStatus(false, UserRegStatus.minRate) => UserRegStatus.prefferedRate
           case RegStatus(false, UserRegStatus.prefferedRate) => UserRegStatus.timeZone
           case RegStatus(false, UserRegStatus.timeZone) => UserRegStatus.hoursPerWeek
-          case _ => UserRegStatus.bio
+          case RegStatus(false, UserRegStatus.hoursPerWeek) => UserRegStatus.registered
+          case RegStatus(true, _) => UserRegStatus.registered
+          case _ => UserRegStatus.registered
         }
 
   import FreelancerFieldsValidateUtil._
+
+  def saveFirst (tgId:Long, tgNick:Option[String]): Future[Long] ={
+    for {
+      _          <- saveTgInfo(tgId, tgNick)
+      regInfo    <- registrationDAO
+        .saveRegOperation( tgId, RegStatus(registered = false, UserRegStatus.bio) )
+    }yield regInfo
+  }
 
   def validateAndSaveBioReg (tgId: Long, currentStatus:RegStatus, message:String): Future[Try[Option[Freelancer]]] = {
     val bio = message.split(" ").toList
     val name = bio.headOption.getOrElse("")
     val surname = if (bio.isEmpty) "" else bio.tail.headOption.getOrElse("")
-    if (name.isEmpty || surname.isEmpty) Failure(new EmptyBioException("name or surname is empty"))
+    if (name.isEmpty || surname.isEmpty) Failure(new EmptyBioException("имя и фамилию необходимо заполнить"))
     (for {
       bio <- saveBio(tgId, name, surname)
-      _ <- registrationDAO.saveRegOperation(tgId, RegStatus (false, getNextStep(currentStatus)))
+      _   <- registrationDAO.saveRegOperation(tgId, RegStatus (currentStatus.registered, getNextStep(currentStatus)))
     } yield bio).map(x => Success (x))
 
   }
@@ -58,7 +69,7 @@ class RegisterUserStepByStepService extends SaveUserService with Logging{
       Failure(new InvalidPhoneNumberException("номер телефона не корректен"))
     (for {
       bio <- savePhone(tgId, message)
-      _ <- registrationDAO.saveRegOperation(tgId, RegStatus (false, getNextStep(currentStatus)))
+      _ <- registrationDAO.saveRegOperation(tgId, RegStatus (currentStatus.registered, getNextStep(currentStatus)))
     } yield bio).map(x => Success (x))
   }
 
@@ -67,7 +78,7 @@ class RegisterUserStepByStepService extends SaveUserService with Logging{
       Failure(new InvalidEmailException("email некорректен"))
     (for {
       bio <- saveEmail(tgId, message)
-      _ <- registrationDAO.saveRegOperation(tgId, RegStatus (false, getNextStep(currentStatus)))
+      _ <- registrationDAO.saveRegOperation(tgId, RegStatus (currentStatus.registered, getNextStep(currentStatus)))
     } yield bio).map(x => Success (x))
   }
 
@@ -98,7 +109,7 @@ class RegisterUserStepByStepService extends SaveUserService with Logging{
     else
       (for {
         data <- save(tgId, mapTo(message))
-        _ <- registrationDAO.saveRegOperation(tgId, RegStatus (false, getNextStep(currentStatus)))
+        _ <- registrationDAO.saveRegOperation(tgId, RegStatus (currentStatus.registered, getNextStep(currentStatus)))
       } yield data).map(x => Success (x))
   }
 
@@ -109,29 +120,39 @@ class RegisterUserStepByStepService extends SaveUserService with Logging{
     }
   }
 
-  def processMessage (tgId: Long, currentStatus:RegStatus, message:String):Future[Try[Option[Freelancer]]] = {
+  def finishRegistration(tgId: Long): Future[Try[Option[Freelancer]]] = {
+    (for {
+      _    <- registrationDAO.saveRegOperation(tgId, RegStatus (true, UserRegStatus.registered))
+      user <- freelancerDao.getByTgId(tgId)
+    } yield user).map(x => Success (x))
+  }
+
+  def processMessage(tgId: Long, currentStatus:RegStatus, message:String):Future[Try[Option[Freelancer]]] = {
     currentStatus match {
-      case RegStatus(false, UserRegStatus.bio) => validateAndSaveBioReg(tgId, currentStatus, message)
-      case RegStatus(false, UserRegStatus.phoneNumber) =>
+      case RegStatus(false, UserRegStatus.bio) =>
         validateAndSaveBioReg(tgId, currentStatus, message)
-      case RegStatus(false, UserRegStatus.email) =>
+      case RegStatus(_, UserRegStatus.phoneNumber) =>
+        validateAndSavePhoneReg(tgId, currentStatus, message)
+      case RegStatus(_, UserRegStatus.email) =>
         validateAndSaveEmailReg(tgId, currentStatus, message)
-      case RegStatus(false, UserRegStatus.workingStack) =>
+      case RegStatus(_, UserRegStatus.workingStack) =>
         validateAndSaveWorkTechsReg(tgId, currentStatus, message)
-      case RegStatus(false, UserRegStatus.ownStack) =>
+      case RegStatus(_, UserRegStatus.ownStack) =>
         validateAndSaveOwnTechsReg(tgId, currentStatus, message)
-      case RegStatus(false, UserRegStatus.minRate) =>
+      case RegStatus(_, UserRegStatus.minRate) =>
         validateAndSaveMinRateReg(tgId, currentStatus, message)
-      case RegStatus(false, UserRegStatus.prefferedRate) =>
+      case RegStatus(_, UserRegStatus.prefferedRate) =>
         validateAndSavePreferredRateReg(tgId, currentStatus, message)
-      case RegStatus(false, UserRegStatus.timeZone) =>
+      case RegStatus(_, UserRegStatus.timeZone) =>
         validateAndSave(tgId, currentStatus, message)(
           saveTimeZone, validateTimeZone,
           {x =>  TimeZoneParsingUtil.parseTimeZone(x).right.get},
           new InvalidTimeZoneException("значение часового пояса не корректно"))
-      case RegStatus(false, UserRegStatus.hoursPerWeek) =>
+      case RegStatus(_, UserRegStatus.hoursPerWeek) =>
         validateAndSave(tgId, currentStatus, message)(saveHours, FreelancerFieldsValidateUtil.validateHoursOfWeek, {x => HoursPerWeek(x).getOrElse(HoursPerWeek.h_5_10)}, new InvalidTimeZoneException("значение количества часов в неделю не корректно"))
-      //case RegStatus(true, _) =>
+      case RegStatus(false, UserRegStatus.registered) =>
+        finishRegistration(tgId)
+      case _ => freelancerDao.getByTgId(tgId).map(Success(_))
     }
   }
   //TODO rewrite ^ with type classes
