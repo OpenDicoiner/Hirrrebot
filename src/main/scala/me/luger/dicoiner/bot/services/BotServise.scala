@@ -141,26 +141,29 @@ class BotServise(val token:String)
   }
 
   onCommand(BotCommands.start.name){ implicit message =>
-    message.from match {
-      case None => reply("Извините, какая-то ошибка")
-      case Some(u) =>
-        val tgId = u.id
-        val tgNick = u.username
-        val chatId = message.chat.id
-        registerUserStepByStepService.getCurrent(tgId).map {
-          case None | Some( RegStatus(_, UserRegStatus.notSaved) ) =>
-            log.info("save first")
-            registerUserStepByStepService.saveFirst(tgId, chatId, tgNick).onComplete{
-              case Success(_)=>
-                reply("""Приветствую Вас.
-                        |Для регистрации Вам необходимо заполнить простую анкету.
-                        |Для начала Ваши имя и фамилия:""".stripMargin)
-              case Failure(ex)=>
-                log.error("oops", ex)
-            }
-          case Some (regStatus) =>
-            reply(regStatus.status.message)
-        }
+    if (!BotCommands.values.map(_.name).contains(message.text.getOrElse("").split(" ").head)){
+      message.from match {
+        case None => reply("Извините, какая-то ошибка")
+        case Some(u) =>
+          val tgId = u.id
+          val tgNick = u.username
+          val chatId = message.chat.id
+          registerUserStepByStepService.getCurrent(tgId).map {
+            case None | Some( RegStatus(_, UserRegStatus.notSaved) ) =>
+              log.info("save first")
+              registerUserStepByStepService.saveFirst(tgId, chatId, tgNick).onComplete{
+                case Success(_)=>
+                  reply("""Приветствую Вас.
+                          |Для регистрации Вам необходимо заполнить простую анкету.
+                          |Для начала Ваши имя и фамилия:""".stripMargin)
+                case Failure(ex)=>
+                  log.error("oops", ex)
+              }
+            case Some (regStatus) =>
+              log.debug(s"current regStatus: $regStatus")
+              processMessage(tgId, message.text, regStatus)
+          }
+      }
     }
   }
 
