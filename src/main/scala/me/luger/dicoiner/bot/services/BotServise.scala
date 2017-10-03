@@ -141,7 +141,6 @@ class BotServise(val token:String)
   }
 
   onCommand(BotCommands.start.name){ implicit message =>
-    if (!BotCommands.values.map(_.name).contains(message.text.getOrElse("").split(" ").head)){
       message.from match {
         case None => reply("Извините, какая-то ошибка")
         case Some(u) =>
@@ -164,7 +163,6 @@ class BotServise(val token:String)
               processMessage(tgId, message.text, regStatus)
           }
       }
-    }
   }
 
   onCommand(BotCommands.update.name){ implicit message =>
